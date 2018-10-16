@@ -18,7 +18,7 @@ You can do a quick install and run this outside of MODX and only requires PHP to
 - Create composer.json in your preferred directory, see below
 - Now run ```composer install```
 - Setup the .env file as mentioned below
-- Run commands as: ```php src/bootstrap.php lexicon-helper:compare```
+- Run commands as: ```php src/bootstrap.php``` and ```php src/bootstrap.php lexicon-helper:compare --help```
 
 ## Production install
 

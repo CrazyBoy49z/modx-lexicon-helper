@@ -37,7 +37,7 @@ class CompareCommand extends BaseCommand
             ->addArgument(
                 'method',
                 InputArgument::OPTIONAL,
-                'Compare key only or values',
+                'Compare key only[key], duplicate values[duplicate] or values[values]',
                 'key'
             )
             ->addOption(
@@ -107,11 +107,17 @@ class CompareCommand extends BaseCommand
             ->setLexiconValueMaxWidth($input->getOption('width'))
             ->setTopic($input->getOption('topic'));
 
-        if ($method === 'values') {
-            $lexiconCompare->compareValuesSideBySide($output);
+        switch(strtolower(trim($method))) {
+            case 'values':
+                $lexiconCompare->compareValuesSideBySide($output);
+                break;
 
-        } else {
-            $lexiconCompare->diffKeysToConsoleTable($output);
+            case 'duplicate':
+                $lexiconCompare->findDuplicates($output);
+                break;
+
+            default:
+                $lexiconCompare->diffKeysToConsoleTable($output);
 
         }
 

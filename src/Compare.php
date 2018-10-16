@@ -12,6 +12,7 @@ use FilesystemIterator;
 use LCI\MODX\Console\Helpers\UserInteractionHandler;
 use SplFileInfo;
 use Symfony\Component\Console\Helper\Table;
+use Symfony\Component\Console\Helper\TableSeparator;
 use Symfony\Component\Console\Output\OutputInterface;
 
 class Compare
@@ -115,6 +116,49 @@ class Compare
                 )
             );
         }
+    }
+
+    /**
+     * @param OutputInterface $output
+     */
+    public function findDuplicates(OutputInterface $output)
+    {
+        $this->output = $output;
+
+        /** @var FilesystemIterator $it */
+        $it = new FilesystemIterator($this->getLanguagePath($this->primary_language));
+
+        $lexicons = [];
+        $topics = [];
+        /** topic | key(s) | value  */
+        /** @var SplFileInfo $fileInfo */
+        foreach ($it as $fileInfo) {
+            if (!$fileInfo->getExtension() == 'php') {
+                continue;
+            }
+            //continue;
+            $parts = explode('.', $fileInfo->getFilename());
+
+            if ($this->topic != 1 && $this->topic != $parts[0]) {
+                continue;
+            }
+
+            $lexicons[$parts[0]] = $this->getLexicon($fileInfo->getRealPath());
+
+            $topics[] = $parts[0];
+        }
+
+        $this->userInteractionHandler->tellUser('Finding duplicate keys for '. $this->primary_language, UserInteractionHandler::MASSAGE_STRING);
+
+        $rows = $this->findDuplicateKeys($lexicons, $topics);
+
+        $this->outputDuplicateTable($this->output, $rows);
+
+        $this->userInteractionHandler->tellUser('Finding duplicate values for lexicon keys for '. $this->primary_language, UserInteractionHandler::MASSAGE_STRING);
+
+        $rows = $this->findDuplicateValues($lexicons, $topics);
+
+        $this->outputDuplicateTable($this->output, $rows);
     }
 
     /**
@@ -398,6 +442,104 @@ class Compare
         $table->render();
     }
 
+
+    /**
+     * @param $lexicons
+     * @param $topics
+     * @return array
+     */
+    protected function findDuplicateKeys($lexicons, $topics)
+    {
+        $keys = [];
+
+        foreach ($lexicons as $topic => $data) {
+            foreach ( $data as $key => $value) {
+                if (!isset($keys[$key])) {
+                    $keys[$key] = [];
+                }
+
+                $keys[$key][] = [
+                    't' => $topic,
+                    'v' => $value
+                ];
+            }
+        }
+
+        $rows = [];
+        foreach ($keys as $key => $related) {
+            if (count($related) > 1) {
+                if (count($rows) > 0) {
+                    $rows[] = new TableSeparator();
+                }
+                // make rows:
+                foreach ($related as $count => $data) {
+                    $rows[] = [
+                        $data['t'],
+                        $key,
+                        $this->limitStringLength($data['v'])
+                    ];
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param $lexicons
+     * @param $topics
+     * @return array
+     */
+    protected function findDuplicateValues($lexicons, $topics)
+    {
+        $values = [];
+
+        foreach ($lexicons as $topic => $data) {
+            foreach ( $data as $key => $value) {
+                if (!isset($values[$value])) {
+                    $values[$value] = [];
+                }
+
+                $values[$value][] = [
+                    'k' => $key,
+                    't' => $topic
+                ];
+            }
+        }
+
+        $rows = [];
+        foreach ($values as $value => $related) {
+            if (count($related) > 1) {
+                if (count($rows) > 0) {
+                    $rows[] = new TableSeparator();
+                }
+                // make rows:
+                foreach ($related as $count => $data) {
+                    $rows[] = [
+                        $data['t'],
+                        $data['k'],
+                        $this->limitStringLength($value)
+                    ];
+                }
+            }
+        }
+
+        return $rows;
+    }
+
+    /**
+     * @param OutputInterface $output
+     * @param array $rows
+     */
+    protected function outputDuplicateTable(OutputInterface $output, $rows=[])
+    {
+        $table = new Table($output);
+        $table
+            ->setHeaders(['Topic', 'Keys', 'Value'])
+            ->addRows($rows)
+        ;
+        $table->render();
+    }
 
 
 }
